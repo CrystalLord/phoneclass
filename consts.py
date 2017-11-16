@@ -1,8 +1,16 @@
+DATA_DIR = "/mnt/tower_1tb/neural_networks/audio_train/"
+MODELDIR = "/mnt/tower_1tb/neural_networks/models/"
+PREDDIR = "/mnt/tower_1tb/neural_networks/prediction/"
+TRAINDIR = "/mnt/tower_1tb/neural_networks/audio_train/"
+BELL_FILE = "/mnt/tower_1tb/neural_networks/misc/bell.wav"
+IPAWORDFILE = "/mnt/tower_1tb/neural_networks/misc/ipa_word_map.csv"
+
 IPA_NUM = {
-        "sil": 0,
+        "sl": 0,
         "a1": 1,
         "i1": 2,
-        "e2": 3}
+        "ai": 3,
+        "e2": 4}
 
 def one_hotify(dic):
     """Convert a dictionary's keys to a one hot vector"""

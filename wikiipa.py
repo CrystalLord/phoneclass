@@ -25,7 +25,9 @@ class PageGrabber:
         soup = BeautifulSoup(raw_html, 'html.parser')
         english_header = soup.find(id="English")
         siblings = english_header.parent.next_siblings
+        # pronunciation id offset
         pro_id = -3
+        # pronunciation unlisted element.
         pro_ul = None
 
         for i, s in enumerate(siblings):
@@ -48,26 +50,36 @@ class PageGrabber:
                                 "html.parser").find(class_="IPA"))
                     contains_american = True
             if not contains_american:
-                ipa_elem_string = str(pro_ul.find(class_="IPA"))
+                print("PageGrabber--Finding general IPA...")
+                ipa_elem_string = pro_ul.find(class_="IPA")
+                # Check to make sure it's not none first.
+                if ipa_elem_string is None:
+                    return None
+                else:
+                    ipa_elem_string = str(ipa_elem_string)
+
+            # Take out the IPA between the slashes.
+            slash_indices = []
+            for i, c in enumerate(ipa_elem_string):
+                if c == "/" or c == "[" or c == "]":
+                    slash_indices.append(i)
+            ipa = ipa_elem_string[slash_indices[0]+1:slash_indices[1]]
+
+            # Return the ipa cleaned.
+            return ipa
         else:
             # Could not find pronunciation header.
             print("Could not find pronunciation header")
             return None
 
-        # Take out the IPA between the slashes.
-        slash_indices = []
-        for i, c in enumerate(ipa_elem_string):
-            if c == "/" or c == "[" or c == "]":
-                slash_indices.append(i)
-        ipa = ipa_elem_string[slash_indices[0]+1:slash_indices[1]]
 
-        # Return the ipa cleaned.
-        return ipa
-
+    def pull_word(self, word):
+        """Pull a word from wiktionary page"""
+        return self.pull(get_wiktionary_page(word))
 
 def get_wiktionary_page(word):
     url = "https://en.wiktionary.org/wiki/"+word
     return url
 
-pg = PageGrabber()
-print(pg.pull(get_wiktionary_page(str(input("word> ")))))
+#pg = PageGrabber()
+#print(pg.pull(get_wiktionary_page(str(input("word> ")))))

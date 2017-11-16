@@ -5,11 +5,16 @@ import re
 WEIRD_CHARS_REG1 = "[(..)X\@\+\&\^\%<>\[\]\$\*\:\-]+"
 WEIRD_CHARS_REG2 = "[0-9]+"
 
-FILES_TO_READ = ["/home/crystal/Desktop/TRN/SBC001.trn"]
+def parse_transcript(trn_files):
+    """Return a list of parsed lines. They take the format:
 
-def main():
+    (start_time, end_time, words_in_line)
+    """
+    if isinstance(trn_files, str):
+        trn_files = [trn_files]
+
     line_list = []
-    for fp in FILES_TO_READ:
+    for fp in trn_files:
         with open(fp, 'r') as f:
             for line in f:
                 items = line.split("\t")
@@ -19,12 +24,12 @@ def main():
                 elif len(items):
                     text = items[1]
                 else:
-                    raise ValueError("")
+                    raise ValueError("Something was wrong?")
                 if not contains_weird(text):
                     text = text_clean(text)
                     text = text.lower()
                     line_list.append((float(t_low), float(t_high), text))
-    print(line_list)
+    return line_list
 
 def contains_weird(text):
     """Does the given text contain any bizarre, abnormal characters?"""
@@ -103,8 +108,3 @@ def text_clean(text):
 #
 #def weird_percent(text, regions):
 #    return len(text)/weird_count(regions)
-
-if __name__ == "__main__":
-    main()
-    #text = "<Hello> yes <hi!>"
-    #print(stripper(text))
