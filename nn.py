@@ -13,6 +13,11 @@ from audioclip import AudioClip
 from ac_setup import ac_setup2
 
 def main(args):
+
+    if len(args) != 3:
+        print("Usage: nn (train|load) (epochs|model_to_load)")
+        return
+
     train_x, train_y = gather_audio()
 
     # Get data sizes.
@@ -26,9 +31,7 @@ def main(args):
         train_save(model, train_x, train_y, epochs, batch_size)
     elif args[1] == "load":
         model = load(args[2])
-
     test_x = np.copy(train_x)
-    #np.random.shuffle(test_x)
     pred_save(model, test_x, batch_size)
 
 

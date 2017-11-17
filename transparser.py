@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import re
 
 WEIRD_CHARS_REG1 = "[(..)X\@\+\&\^\%<>\[\]\$\*\:\-]+"
@@ -8,8 +6,13 @@ WEIRD_CHARS_REG2 = "[0-9]+"
 def parse_transcript(trn_files):
     """Return a list of parsed lines. They take the format:
 
-    (start_time, end_time, words_in_line)
+    Arguments
+    trn_files -- Filepaths or list of filepaths to transcripts.
+
+    Returns annotations in the form of:
+    [(start_time, end_time, english_transcription), ... ]
     """
+    # If trn_files is just one string, convert it to a list.
     if isinstance(trn_files, str):
         trn_files = [trn_files]
 

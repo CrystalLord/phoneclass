@@ -51,6 +51,12 @@ def plot_spec(spec, sr):
     plt.tight_layout()
     plt.show()
 
+def sum_vectors(v1, v2):
+    if len(v1) != len(v2):
+        raise ValueError("Vectors to be summed not same length")
+    else:
+        return [v1[i] + v2[i] for i in range(len(v1))]
+
 def tstamp():
     """Generate a unique timestamp"""
     now = datetime.datetime.now()
@@ -58,9 +64,30 @@ def tstamp():
     return str(t[0]) + str(t[1]) + str(t[2]) \
         + str(t[3]) + str(t[4]) + str(t[5])
 
+def flatten(l):
+    """Flatten a nested list"""
+    new_list = []
+    for i in l:
+        if isinstance(i, list):
+            new_list += flatten(i)
+        else:
+            new_list.append(i)
+    return new_list
+
+def flatten_strlist(l):
+    """Flatten a nested list, but also splits strings"""
+    new_list = []
+    for i in l:
+        if isinstance(i, list) or isinstance(i, str):
+            new_list += flatten(i)
+        else:
+            new_list.append(i)
+    return new_list
+
 if __name__ == "__main__":
     import consts as ct
     from audioclip import AudioClip
-    ac = AudioClip(ct.DATA_DIR + "vowels/e2/e2_1.wav")
-    mfccs = ac.mfcc(bell=True)
-    plot_spec(mfccs, ac.sr)
+    print(flatten_strlist(["hi", "there"]))
+    #ac = AudioClip(ct.DATA_DIR + "vowels/e2/e2_1.wav")
+    #mfccs = ac.mfcc(bell=True)
+    #plot_spec(mfccs, ac.sr)
