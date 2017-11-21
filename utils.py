@@ -3,6 +3,7 @@ import librosa.display
 import numpy as np
 import time
 import datetime
+import dict_utils
 
 def dbspec(spec):
     """Convert spectrogram data from power to decibels"""
@@ -23,13 +24,20 @@ def cutwave(waveform, sr, time):
         new_waveform = waveform[0:minlen]
     return new_waveform
 
-def combtraining(audioclips):
-    """Take in a list of audioclips and merge their training data."""
+def combtraining(audioclips, use_bell=False):
+    """Take in a list of audioclips and merge their training data.
+
+    Returns a tuple of the form
+    (training_x, training_y)
+    """
     batches_x = []
     batches_y = []
 
     for i, ac in enumerate(audioclips):
-        train_x, train_y = ac.batch()
+        if use_bell:
+            train_x, train_y = ac.bell_batch()
+        else:
+            train_x, train_y = ac.batch()
         batches_x.append(train_x)
         batches_y.append(train_y)
 
@@ -62,7 +70,7 @@ def tstamp():
     now = datetime.datetime.now()
     t = now.timetuple()
     return str(t[0]) + str(t[1]) + str(t[2]) \
-        + str(t[3]) + str(t[4]) + str(t[5])
+        + "_" + str(t[3]) + "-" + str(t[4]) + "-" + str(t[5])
 
 def flatten(l):
     """Flatten a nested list"""
@@ -82,6 +90,26 @@ def flatten_strlist(l):
             new_list += flatten(i)
         else:
             new_list.append(i)
+    return new_list
+
+def slashend(s):
+    """End a string with a forward slash. Do nothing if exists already."""
+    if s[-1] == "/":
+        return s
+    else:
+        return s + "/"
+
+def index_to_label(np_array, labels):
+    new_list = []
+    flip_labels = dict_utils.invert_dict(labels)
+    print(flip_labels.keys())
+    for batch in np_array:
+        for i, arr in enumerate(np_array):
+            temp_list = []
+            for j, conf in enumerate(arr):
+                if str(j) in flip_labels:
+                    temp_list.append((flip_labels[str(j)], conf))
+            new_list.append(temp_list)
     return new_list
 
 if __name__ == "__main__":

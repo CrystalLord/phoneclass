@@ -5,7 +5,7 @@ import dict_utils
 import consts as ct
 from one_hotify import one_hotify
 
-TO_REMOVE = ['ː', ".", "ˈ", "(", ")", "ˌ", "\u0361", "\u032F"]
+TO_REMOVE = ['ː', ".", "ˈ", "(", ")", "ˌ", "\u0329", "\u0361", "\u032F"]
 TO_MERGE = {"\u028D":"w", "ɑ":"a", "ə":"ʌ"}
 
 def convert(line_list):
@@ -34,7 +34,17 @@ def convert(line_list):
     return converted_list
 
 def category_convert(line_list):
-    """Convert
+    """Convert a list of tuples of the format (start, end, english_text) to IPA
+
+    The conversion is as follows:
+    [(start, end, english), ... ] --> [(start, end, categorical vector), ... ]
+
+    Arguments
+    line_list -- List of tuples representing a stripped transcription line.
+
+    Returns
+    position 1 -- A dictionary of each phoneme mapped to its index.
+    position 2 -- A list of tuples of the form above.
     """
     # Get the IPA of the lines.
     ipa_lines = convert(line_list)

@@ -50,3 +50,6 @@ def write_dict(fp, dict, overwrite=False):
         for t in tups_list:
             f.write(str(t[0]) + "," + str(t[1]) + "\n")
     print("Dictionary written to " + fp)
+
+def invert_dict(dict):
+    return {v: k for k, v in dict.items()}

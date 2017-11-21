@@ -7,6 +7,9 @@ TRAINDIR = "/mnt/tower_1tb/neural_networks/audio_train/"
 BELL_FILE = "/mnt/tower_1tb/neural_networks/misc/bell.wav"
 IPAWORDFILE = "/mnt/tower_1tb/neural_networks/misc/ipa_word_map.csv"
 
+AUDIOFILES = ["/mnt/tower_1tb/neural_networks/ucsb_audio/SBC001.wav"]
+TRANSCRIPTS = ["/mnt/tower_1tb/neural_networks/ucsb_transcripts/SBC001.trn"]
+
 TEST_TRANSCRIPT_FP = \
 "/mnt/tower_1tb/neural_networks/ucsb_transcripts/SBC001.trn"
 

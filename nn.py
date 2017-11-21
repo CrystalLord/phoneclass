@@ -8,9 +8,29 @@ import sys
 import time
 
 import utils
+import dict_utils
 import consts as ct
 from audioclip import AudioClip
 from ac_setup import ac_setup2
+import bell_training_gen
+
+DEBUG = True
+DEBUG_X_FP = "/mnt/tower_1tb/neural_networks/training_data/training.npy"
+DEBUG_Y_FP = "/mnt/tower_1tb/neural_networks/training_data/target.npy"
+LABELS_FP = "/mnt/tower_1tb/neural_networks/training_data/labels.csv"
+
+
+# ===========================================================================
+# HYPERPARAMETERS
+
+LAYER_SIZES = [70, # LSTM front layer
+               40,
+               30,
+               37]
+LOSS = "mean_squared_error"
+OPT = optimizers.RMSprop()
+
+# ============================================================================
 
 def main(args):
 
@@ -18,28 +38,45 @@ def main(args):
         print("Usage: nn (train|load) (epochs|model_to_load)")
         return
 
-    train_x, train_y = gather_audio()
+    #train_x, train_y = gather_audio()
 
-    # Get data sizes.
-    arch_feat = train_x.shape[2]
-    arch_samps = train_x.shape[1]
-    batch_size = 1
 
-    model = buildmodel(arch_feat, arch_samps, batch_size)
     if args[1] == "train":
         epochs = int(args[2])
+        #x_fp = input("input training data> ")
+        #train_x = np.load(x_fp)
+        #y_fp = input("input target data> ")
+        #train_y = np.load(y_fp)
+        if DEBUG:
+            train_x = np.load(DEBUG_X_FP)
+            train_y = np.load(DEBUG_Y_FP)
+
+        # Get data sizes.
+        arch_feat = train_x.shape[2]
+        arch_samps = train_x.shape[1]
+        batch_size = 1
+
+        np.save(ct.DATA_DIR+"debug_y", train_y)
+        model = buildmodel(arch_feat, arch_samps, batch_size)
         train_save(model, train_x, train_y, epochs, batch_size)
     elif args[1] == "load":
         model = load(args[2])
-    test_x = np.copy(train_x)
-    pred_save(model, test_x, batch_size)
+        #from keras.utils import plot_model
+        #plot_model(model, to_file="/mnt/tower_1tb/model_plot")
+
+    if DEBUG:
+        labels = dict_utils.load_dict(LABELS_FP)
+        test_on_audio_file(model, labels,
+            "/mnt/tower_1tb/neural_networks/misc/test_data.wav")
+    #test_x = np.copy(train_x)
+    #pred_save(model, test_x, batch_size)
 
 
 def train_save(model, train_x, train_y, epochs, batch_size):
     """Train and save the neural network"""
     model.fit(train_x, train_y,
             epochs=epochs,
-            validation_split=0.5,
+            validation_split=0.1,
             batch_size=batch_size)
     print("Model Trained.")
     filename = ct.MODELDIR + "model" + utils.tstamp()
@@ -65,16 +102,18 @@ def buildmodel(feature_size, sample_count, batch_size):
     """
     model = Sequential()
     model.add(LSTM(
-        32,
+        LAYER_SIZES[0],
         batch_input_shape=(batch_size, sample_count, feature_size),
         return_sequences=True))
-    model.add(Dense(16))
-    model.add(Dense(5, activation="softmax"))
+    model.add(LSTM(LAYER_SIZES[1], return_sequences=True))
+    model.add(Dense(LAYER_SIZES[2]))
+    model.add(Dense(LAYER_SIZES[3], activation="softmax"))
 
-    sgd = optimizers.SGD(lr=0.02, momentum=0.01)
+    #sgd = optimizers.SGD(lr=0.02, momentum=0.01)
     model.compile(
-            loss="mean_squared_error",
-            optimizer=sgd,
+            loss=LOSS,
+            #optimizer=sgd,
+            optimizer=OPT,
             metrics=[metrics.categorical_accuracy])
     return model
 
@@ -98,6 +137,16 @@ def gather_audio():
         np.save(ct.DATA_DIR + "trainy", train_y)
 
     return train_x, train_y
+
+
+def test_on_audio_file(model, labels, audio_file):
+    ac = AudioClip(audio_file, mintime=4.74)
+    batch_x = ac.raw_x_batch()
+    batch_x = batch_x[np.newaxis, :, :]
+    pred = model.predict(batch_x, 1)
+    print(pred)
+    print(utils.index_to_label(pred, labels))
+    np.save("/mnt/tower_1tb/prediction", pred)
 
 if __name__ == "__main__":
     main(sys.argv)

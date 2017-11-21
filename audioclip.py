@@ -36,7 +36,7 @@ class AudioClip:
         self.ipa_regions = None
         self.slices = None
         self.length = self.samples.size / self.sr
-        self._ipa_full = None
+        self._ipa_full_vector = None
         self.annotated_samples = None
 
     def batch(self, coeff_count=13):
@@ -48,7 +48,7 @@ class AudioClip:
         Keyword Arguments
         coeff_count -- Number of Mel-Frequency Cepstrum Coefficients to use.
         """
-        mfccs = self.mfcc(coeff_count)
+        mfccs, _ = self.mfcc(coeff_count)
         delta1, delta2 = self.delta_coeffs(mfccs)
         self._annotate(mfccs)
 
@@ -67,15 +67,23 @@ class AudioClip:
         """
         # Retrieve MFCC sequence, the time at which the bell occurs, and the
         # new length of the appended sequence in seconds.
-        mfccs, bell_time, new_time = self.mfcc(coeff_count, bell=True)
+        mfccs, mfcc_sr, bell_time = self.mfcc(coeff_count, bell=True)
         delta1, delta2 = self.delta_coeffs(mfccs)
-        self._bell_annotate(mfccs, bell_time)
+        self._bell_annotate(mfccs, round(mfcc_sr * bell_time))
 
         mfccs_len = mfccs.shape[1]
         batch_x = np.concatenate((mfccs, delta1, delta2), axis=0).transpose()
         batch_y = np.array(self.annotated_samples)
         print("AudioClip--Generated Batch")
         return (batch_x, batch_y)
+
+    def raw_x_batch(self, coeff_count=13):
+        """Retrieve only the Neural Network input batch data. No Annotations.
+        """
+        mfccs, mfcc_sr = self.mfcc(coeff_count)
+        delta1, delta2 = self.delta_coeffs(mfccs)
+        batch_x = np.concatenate((mfccs, delta1, delta2), axis=0).transpose()
+        return batch_x
 
     def region_setup(self, slices, ipa_regions):
         """Setup slices and ipa_regions. Deprecated."""
@@ -97,24 +105,18 @@ class AudioClip:
                 ipa_regions.append(p)
         self.region_setup(slices, ipa_regions)
 
-    def bell_annotate(self, mfccs, bell_start_sample, bell_duration):
-        if self._ipa_full is None:
+    def _bell_annotate(self, mfccs, bell_start_sample):
+        """Modify this AudioClip to set its annotated samples for bell.
+        Each time step of the MFCC sequence is annotated with a vector.
+        If the time step exists before the
+        """
+        if self._ipa_full_vector is None:
             raise ValueError("Full ipa not set. Call end_with_ipa() prior.")
         mfcc_len = mfccs.shape[1]
-        sample_ann = [ct.IPAM_MAP['sl']] * mfcc_len
-
-        # Sum up the IPA vectors
-        for i, sound_present in enumerate(self._ipa_full):
-            sound_v = ct.IPA_MAP[sound_present]
-            if i == 0:
-                annotation_vector = sound_v
-            else:
-                annotation_vector = sum_vectors(
-                    annotation_vector,
-                    sound_v)
+        sample_ann = [[0]*len(self._ipa_full_vector)] * mfcc_len
 
         for i in range(bell_start_sample, mfcc_len):
-            sample_ann[i] = annotation_vector
+            sample_ann[i] = self._ipa_full_vector
         self.annotated_samples = sample_ann
 
     def _annotate(self, mfccs):
@@ -152,9 +154,9 @@ class AudioClip:
                 sample_ann[sample_ind] = ct.IPA_MAP[ipa_regions[i]]
         self.annotated_samples = sample_ann
 
-    def end_with_ipa(self, ipa):
+    def end_with_ipa_vector(self, ipa):
         """Annotate this whole AudioClip file with a list of found IPAs"""
-        self._ipa_full = ipa
+        self._ipa_full_vector = ipa
 
     def append_bell(self, wave, pre_silence_length=0.5, post_silence_length=1):
         """Append a 'bell' to the given sample data.
@@ -168,20 +170,24 @@ class AudioClip:
 
         Returns a new set of samples with the appended bell and silences.
         """
+        # Retrieve bell audio data.
         bell_samps, bell_sr = librosa.load(
                     ct.BELL_FILE,
                     sr=self.sr,
                     mono=True)
-        bell_length = bell_samps / bell_sr
+        # Length of the bell sound, in seconds.
+        bell_length = bell_samps.shape[0] / bell_sr
 
+        # Silence before the bell triggers.
         pre_silence = np.zeros(round(pre_silence_length * self.sr))
+        # Silence after the bell triggers.
         post_silence = np.zeros(round(post_silence_length * self.sr))
         new_wave = np.concatenate([wave,
                                    pre_silence,
                                    bell_samps,
                                    post_silence])
-        bell_time = wave / self.sr + pre_silence_length + bell_length
-        new_time = wave / self.sr + pre_silence_length + bell_length \
+        bell_time = wave.shape[0] / self.sr + pre_silence_length + bell_length
+        new_time = wave.shape[0] / self.sr + pre_silence_length + bell_length \
             + post_silence_length
         return new_wave, bell_time, new_time
 
@@ -196,14 +202,18 @@ class AudioClip:
         If bell is set, returns a tuple of (mffcc seq, bell_time)
         """
         samps = self.samples
+        sound_length = self.length
         if bell:
-            samps, bell_time, new_length = self.append_bell(samps)
+            # Update the samples, the bell_time, and the length of
+            # sound.
+            samps, bell_time, sound_length = self.append_bell(samps)
 
         mfcc_seq = feature.mfcc(samps, sr=self.sr, n_mfcc=coeff_count)
+        mfcc_sr = mfcc_seq.shape[1] / sound_length
         print("AudioClip--MFCC Sequence Generated")
         if bell:
-            return mfcc_seq, bell_time, new_time
-        return mfcc_seq
+            return mfcc_seq, mfcc_sr, bell_time
+        return mfcc_seq, mfcc_sr
 
     def delta_coeffs(self, mfcc_seq):
         """Retrieve the delta and delta-delta of the MFCC cofficients"""
