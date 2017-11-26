@@ -47,6 +47,10 @@ def main_train(args):
     arch_samps = train_x.shape[1]
     batch_size = 1
 
+    # Pick only a small sample of the data we want to train on.
+    train_x, train_y = pick_training_data(train_x, train_y,
+                                          settings.training_indices)
+
     np.save(ct.DATA_DIR+"debug_y", train_y)
     model = buildmodel(arch_feat, arch_samps, batch_size)
     train_save(model, train_x, train_y, epochs, batch_size)
@@ -59,7 +63,7 @@ def main_load(args):
 
 # END MAIN ===================================================================
 
-def train_save(model, train_x, train_y, epochs, batch_size):
+def train_save(model, train_x, train_y, epochs, batch_size, save=True):
     """Train and save the neural network"""
     model.fit(train_x, train_y,
             epochs=epochs,
@@ -67,15 +71,17 @@ def train_save(model, train_x, train_y, epochs, batch_size):
             batch_size=batch_size)
     print("Model Trained.")
     filename = ct.MODELDIR + "model" + utils.tstamp()
-    model.save(filename)
+    if save:
+        model.save(filename)
     print("Model saved to " + filename)
 
 
-def pred_save(model, test_x, batch_size):
+def pred_save(model, test_x, batch_size, save=True):
     """Run a prediction test of the neural network and save result"""
     pred = model.predict(test_x, batch_size=batch_size)
     filename = ct.PREDDIR + "pred_new" + utils.tstamp()
-    np.save(filename, pred)
+    if save:
+        np.save(filename, pred)
     print("Prediction saved to " + filename + ".npy")
 
 
@@ -131,10 +137,10 @@ def test_on_audio_file(model, labels, audio_file):
     batch_x = ac.raw_x_batch()
     batch_x = batch_x[np.newaxis, :, :]
     pred = model.predict(batch_x, 1)
-    #print(pred)
     utils.index_to_label(pred, labels)
-    #print(utils.index_to_label(pred, labels))
-    np.save("/mnt/tower_1tb/prediction", pred)
+    print(pred)
+    print(utils.index_to_label(pred, labels))
+    #np.save("/mnt/tower_1tb/prediction", pred)
 
 
 def parse_args():
@@ -161,6 +167,35 @@ def parse_args():
     train.set_defaults(func=main_train)
     load.set_defaults(func=main_load)
     return parser.parse_args()
+
+def pick_training_data(input_data, target_data, indices):
+    """Choose only certain batches from a large set of training data.
+
+    Arguments
+    input_data -- Input data we will pick from.
+    target_data -- Target data we will pick from.
+    indices -- Tuple of indices. If empty, will return the original data.
+
+    Outputs a tuple of the form (picked_input_data, picked_target_data)
+    """
+
+    if len(indices) == 0:
+        return input_data, target_data
+
+    num_batches = len(indices)
+
+    input_data_y = input_data.shape[1]
+    input_data_z = input_data.shape[2]
+    target_data_y = target_data.shape[1]
+    target_data_z = target_data.shape[2]
+    new_input_data = np.zeros((num_batches, input_data_y, input_data_z))
+    new_target_data = np.zeros((num_batches, target_data_y, target_data_z))
+
+    for i in indices:
+        new_input_data[i, :, :] = input_data[i, :, :]
+        new_target_data[i, :, :] = target_data[i, :, :]
+
+    return (new_input_data, new_target_data)
 
 if __name__ == "__main__":
     main()

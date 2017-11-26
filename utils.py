@@ -100,18 +100,18 @@ def slashend(s):
         return s + "/"
 
 def index_to_label(np_array, labels):
+    """Given a 3-dimensional numpy array of outputs, align labels"""
     new_list = []
     flip_labels = dict_utils.invert_dict(labels)
     print(flip_labels.keys())
-    np_array = list(np_array)
-    for batch in np_array[0]:
-        for i, arr in enumerate(np_array):
-            temp_list = []
-            for j, conf in enumerate(arr):
-                if str(j) in flip_labels:
-                    temp_list.append((flip_labels[str(j)], conf))
+    for batch_index in range(np_array.shape[0]):
+        batch = np_array[batch_index, :, :]
+        for arr_i in range(batch.shape[0]):
+            arr = batch[arr_i, :]
+            print(arr)
+            temp_list = [(flip_labels[str(i)], a) for i, a in
+                         enumerate(arr)]
             new_list.append(temp_list)
-            print(temp_list)
     return new_list
 
 if __name__ == "__main__":
