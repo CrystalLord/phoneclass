@@ -103,13 +103,15 @@ def index_to_label(np_array, labels):
     new_list = []
     flip_labels = dict_utils.invert_dict(labels)
     print(flip_labels.keys())
-    for batch in np_array:
+    np_array = list(np_array)
+    for batch in np_array[0]:
         for i, arr in enumerate(np_array):
             temp_list = []
             for j, conf in enumerate(arr):
                 if str(j) in flip_labels:
                     temp_list.append((flip_labels[str(j)], conf))
             new_list.append(temp_list)
+            print(temp_list)
     return new_list
 
 if __name__ == "__main__":
