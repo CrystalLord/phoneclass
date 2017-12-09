@@ -24,7 +24,7 @@ def cutwave(waveform, sr, time):
         new_waveform = waveform[0:minlen]
     return new_waveform
 
-def combtraining(audioclips, use_bell=False):
+def combtraining(audioclips, use_bell=False, db=False):
     """Take in a list of audioclips and merge their training data.
 
     Returns a tuple of the form
@@ -35,9 +35,9 @@ def combtraining(audioclips, use_bell=False):
 
     for i, ac in enumerate(audioclips):
         if use_bell:
-            train_x, train_y = ac.bell_batch()
+            train_x, train_y = ac.bell_batch(db=db)
         else:
-            train_x, train_y = ac.batch()
+            train_x, train_y = ac.batch(db=db)
         batches_x.append(train_x)
         batches_y.append(train_y)
 
@@ -103,12 +103,10 @@ def index_to_label(np_array, labels):
     """Given a 3-dimensional numpy array of outputs, align labels"""
     new_list = []
     flip_labels = dict_utils.invert_dict(labels)
-    print(flip_labels.keys())
     for batch_index in range(np_array.shape[0]):
         batch = np_array[batch_index, :, :]
         for arr_i in range(batch.shape[0]):
             arr = batch[arr_i, :]
-            print(arr)
             temp_list = [(flip_labels[str(i)], a) for i, a in
                          enumerate(arr)]
             new_list.append(temp_list)

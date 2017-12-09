@@ -39,7 +39,7 @@ class AudioClip:
         self._ipa_full_vector = None
         self.annotated_samples = None
 
-    def batch(self, coeff_count=13):
+    def batch(self, coeff_count=13, db=False):
         """Output a single batch of training data from this AudioClip.
         We make the assumption that the user has annotated the data prior.
         In the process, will compute the MFCC data, the deltas, and the
@@ -47,8 +47,11 @@ class AudioClip:
 
         Keyword Arguments
         coeff_count -- Number of Mel-Frequency Cepstrum Coefficients to use.
+        db -- Use decibel magnitude instead of absolute.
         """
         mfccs, _ = self.mfcc(coeff_count)
+        if db:
+            mfccs = utils.dbspec(mfccs)
         delta1, delta2 = self.delta_coeffs(mfccs)
         self._annotate(mfccs)
 
@@ -58,18 +61,22 @@ class AudioClip:
         print("AudioClip--Generated Batch")
         return (batch_x, batch_y)
 
-    def bell_batch(self, coeff_count=13):
+    def bell_batch(self, coeff_count=13, db=False):
         """Output a single batch of training data from this AudioClip using
         the bell trigger system
 
         Keyword Arguments
         coeff_count -- Number of Mel-Frequency Cepstrum Coefficients to use.
+        db -- Use decibel magnitude instead of absolute.
         """
         # Retrieve MFCC sequence, the time at which the bell occurs, and the
         # new length of the appended sequence in seconds.
         mfccs, mfcc_sr, bell_time = self.mfcc(coeff_count, bell=True)
+        if db:
+            mfccs = utils.dbspec(mfccs)
         delta1, delta2 = self.delta_coeffs(mfccs)
         self._bell_annotate(mfccs, round(mfcc_sr * bell_time))
+
 
         mfccs_len = mfccs.shape[1]
         batch_x = np.concatenate((mfccs, delta1, delta2), axis=0).transpose()

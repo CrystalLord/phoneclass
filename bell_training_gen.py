@@ -13,7 +13,7 @@ import dict_utils
 
 np.set_printoptions(threshold=np.nan)
 
-DEBUG = True
+DEBUG = False
 TRAIN_NAME ="training.npy"
 TARGET_NAME = "target.npy"
 LABEL_NAME = "labels.csv"
@@ -32,12 +32,14 @@ def main():
         audio_file = args.audio_file
         trans = args.transcript
         outdir = args.outdir
+        num = 0
         #output_fp_x = args.outx
         #output_fp_y = args.outy
         #num = args.num
 
     # Get training data
-    labels, train_x, train_y = get_training(audio_file, trans, num)
+    labels, train_x, train_y = get_training(audio_file, trans, num,
+                                            args.decibel)
 
     # Save the data
     if outdir is None:
@@ -45,10 +47,10 @@ def main():
 
     np.save(outdir + TRAIN_NAME, train_x)
     np.save(outdir + TARGET_NAME, train_y)
-    dict_utils.write_dict(outdir + "/" + LABEL_NAME, labels)
+    dict_utils.write_dict(utils.slashend(outdir) + LABEL_NAME, labels)
 
 
-def get_training(audio_file, transcript, num=0):
+def get_training(audio_file, transcript, num=0, db=False):
     """Retrieve training data from an audio file."""
     # Parse the transcript
     if num == 0:
@@ -58,10 +60,12 @@ def get_training(audio_file, transcript, num=0):
     labels, line_annotations = ann_converter.category_convert(parsed)
     print(labels)
     # Apply annotations, and return
-    training_x, training_y = apply_annotations(audio_file, line_annotations)
+    training_x, training_y = apply_annotations(audio_file,
+                                               line_annotations,
+                                               db=db)
     return labels, training_x, training_y
 
-def apply_annotations(audio_file, line_annotations):
+def apply_annotations(audio_file, line_annotations, db=False):
     """Apply line annotations to AudioClips, and batch them"""
     audioclips = []
     for line in line_annotations:
@@ -73,7 +77,7 @@ def apply_annotations(audio_file, line_annotations):
         ac = AudioClip(audio_file, start=start, end=end, mintime=3)
         ac.end_with_ipa_vector(vector)
         audioclips.append(ac)
-    return utils.combtraining(audioclips, use_bell=True)
+    return utils.combtraining(audioclips, use_bell=True, db=db)
 
 def parse_args():
     """Parse arguments passed to the program"""
@@ -89,6 +93,10 @@ def parse_args():
                         metavar="OUTPUT_DIR",
                         default=None,
                         help="Training data directory output filepath")
+    parser.add_argument("-d",
+                        "--decibel",
+                        action='store_true',
+                        help="Compute training data with decibel power mag.")
     return parser.parse_args()
 
 

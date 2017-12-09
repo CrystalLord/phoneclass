@@ -17,30 +17,18 @@ import settings
 import bell_training_gen
 from audioclip import AudioClip
 
-DEBUG = True
-DEBUG_X_FP = "/mnt/tower_1tb/neural_networks/training_data/training.npy"
-DEBUG_Y_FP = "/mnt/tower_1tb/neural_networks/training_data/target.npy"
-LABELS_FP = "/mnt/tower_1tb/neural_networks/training_data/labels.csv"
-
-
 def main():
     args = parse_args()
     # Run the correct main program to operate on these args
     model = args.func(args)
 
-    if DEBUG:
-        labels = dict_utils.load_dict(LABELS_FP)
-        test_on_audio_file(model, labels,
-            "/mnt/tower_1tb/neural_networks/misc/test_data.wav")
-
-
 def main_train(args):
     """Handle training program"""
     # If we want to train a new neural network, this will be set.
     epochs = int(args.epochs)
-    if DEBUG:
-        train_x = np.load(DEBUG_X_FP)
-        train_y = np.load(DEBUG_Y_FP)
+
+    train_x = np.load(settings.input_data)
+    train_y = np.load(settings.target_data)
 
     # Get data sizes.
     arch_feat = train_x.shape[2]
@@ -53,7 +41,11 @@ def main_train(args):
 
     np.save(ct.DATA_DIR+"debug_y", train_y)
     model = buildmodel(arch_feat, arch_samps, batch_size)
-    train_save(model, train_x, train_y, epochs, batch_size)
+    # Train and save the model.
+    train_save(model, train_x, train_y, epochs, batch_size,
+               save=(not args.nosave))
+    # Run a prediction test
+    pred_save(model, train_x, 1, target_y=train_y, save=(not args.nosave))
     return model
 
 def main_load(args):
@@ -63,26 +55,50 @@ def main_load(args):
 
 # END MAIN ===================================================================
 
-def train_save(model, train_x, train_y, epochs, batch_size, save=True):
-    """Train and save the neural network"""
+def train_save(model,
+               train_x,
+               train_y,
+               epochs,
+               batch_size,
+               save=True,
+               validation_split=0.1):
+    """Train and save the neural network
+
+    Saves the model to the MODELDIR defined in consts.
+
+    Arguments
+    model -- The compiled Neural Network model to train.
+    train_x -- The input training data. Must be a 3D Numpy array
+    train_y -- The target training data. Must be a 3D Numpy array
+    epochs -- Number of epochs to train with.
+    batch_size -- The size of each batch. Set to 1 for online training.
+
+    Keyword Arguments
+    save -- Boolean to indicate whether we want to save the model.
+    validation_split -- The fraction of training data we want to reserve for
+                        validation.
+    """
     model.fit(train_x, train_y,
-            epochs=epochs,
-            validation_split=0.1,
-            batch_size=batch_size)
+              epochs=epochs,
+              validation_split=validation_split,
+              batch_size=batch_size)
     print("Model Trained.")
     filename = ct.MODELDIR + "model" + utils.tstamp()
     if save:
         model.save(filename)
-    print("Model saved to " + filename)
+        print("Model saved to " + filename)
 
 
-def pred_save(model, test_x, batch_size, save=True):
+def pred_save(model, test_x, batch_size, target_y=None, save=True):
     """Run a prediction test of the neural network and save result"""
     pred = model.predict(test_x, batch_size=batch_size)
-    filename = ct.PREDDIR + "pred_new" + utils.tstamp()
     if save:
+        filename = ct.PREDDIR + "pred" + utils.tstamp()
         np.save(filename, pred)
-    print("Prediction saved to " + filename + ".npy")
+        print("Prediction saved to " + filename + ".npy")
+        if target_y is not None:
+            filename = ct.PREDDIR + "target" + utils.tstamp()
+            np.save(filename, target_y)
 
 
 def load(fp):
@@ -138,8 +154,8 @@ def test_on_audio_file(model, labels, audio_file):
     batch_x = batch_x[np.newaxis, :, :]
     pred = model.predict(batch_x, 1)
     utils.index_to_label(pred, labels)
-    print(pred)
-    print(utils.index_to_label(pred, labels))
+    #print(pred)
+    #print(utils.index_to_label(pred, labels))
     #np.save("/mnt/tower_1tb/prediction", pred)
 
 
@@ -160,6 +176,9 @@ def parse_args():
                        default=10,
                        metavar="EPOCHS",
                        help="Number of epochs to train on.")
+    train.add_argument("--nosave",
+                       action='store_true',
+                       help="If set, save nothing.")
     load.add_argument("model_file",
                       metavar="MODEL",
                       help="Model to load")
